@@ -11,8 +11,11 @@ services:
     build:
       context: ./tac
       dockerfile: Dockerfile.source
+      target: ${TACCHAIND_BUILD_TARGET:-runtime-source}
       args:
         - DAEMON_VERSION=${TACCHAIND_TAG}
+        - DAEMON_SHA256_AMD64=${TACCHAIND_SHA256_AMD64:-}
+        - DAEMON_SHA256_ARM64=${TACCHAIND_SHA256_ARM64:-}
         - USER=tac
     image: tac:local
     pull_policy: never
@@ -80,8 +83,11 @@ services:
     build:
       context: ./tac
       dockerfile: Dockerfile.source
+      target: ${TACCHAIND_BUILD_TARGET:-runtime-source}
       args:
         - DAEMON_VERSION=${TACCHAIND_TAG}
+        - DAEMON_SHA256_AMD64=${TACCHAIND_SHA256_AMD64:-}
+        - DAEMON_SHA256_ARM64=${TACCHAIND_SHA256_ARM64:-}
         - USER=tac
     image: tac:local
     pull_policy: never

@@ -1,7 +1,7 @@
 # Get dasel for TOML config editing
 FROM ghcr.io/tomwright/dasel:2-alpine AS dasel
 
-# Stage 1: Build tacchaind from source
+# Stage 1: Build tacchaind from source (default path, used for regular releases)
 FROM golang:1.23-bookworm AS builder
 
 ARG DAEMON_VERSION
@@ -22,8 +22,45 @@ RUN mkdir -p /build/libs \
     && if [ "$TARGETARCH" = "amd64" ]; then __arch="x86_64"; else __arch="aarch64"; fi \
     && find /build/ -type f -name "libwasmvm*.$__arch.so" -exec cp '{}' /build/libs/ \; || true
 
-# Stage 2: Runtime
-FROM debian:bookworm-slim
+# Stage 1b: Fetch a pre-built, checksum-verified tacchaind binary.
+#
+# Some tacchain releases (e.g. embargoed security-fix builds) ship as manual
+# GitHub releases whose notes explicitly forbid building from the tagged
+# source tree: the published binary links a private, embargoed fork and a
+# self-built binary from the same tag will silently omit that patch while
+# reporting the same version string. For those releases, use this path
+# (selected via the runtime-binary build target) instead of runtime-source.
+FROM debian:bookworm-slim AS fetcher
+
+ARG DAEMON_VERSION
+ARG TARGETARCH
+ARG DAEMON_SHA256_AMD64
+ARG DAEMON_SHA256_ARM64
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /fetch
+
+RUN set -eu; \
+    case "${TARGETARCH}" in \
+      amd64) expected_sha256="${DAEMON_SHA256_AMD64}" ;; \
+      arm64) expected_sha256="${DAEMON_SHA256_ARM64}" ;; \
+      *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    if [ -z "${expected_sha256}" ]; then \
+      echo "DAEMON_SHA256_${TARGETARCH} is not set - refusing to fetch an unverified tacchaind binary" >&2; \
+      exit 1; \
+    fi; \
+    curl -fsSL -o tacchaind.tar.gz \
+      "https://github.com/TacBuild/tacchain/releases/download/${DAEMON_VERSION}/tacchaind-linux-${TARGETARCH}.tar.gz"; \
+    echo "${expected_sha256}  tacchaind.tar.gz" | sha256sum -c -; \
+    tar -xzf tacchaind.tar.gz; \
+    chmod +x bin/tacchaind
+
+# Stage 2: Shared runtime base
+FROM debian:bookworm-slim AS runtime-base
 
 ARG USER=tac
 ARG UID=1000
@@ -47,15 +84,8 @@ RUN adduser \
 RUN mkdir -p /cosmos/config /cosmos/data \
     && chown -R ${USER}:${USER} /cosmos && chmod -R 700 /cosmos
 
-# Copy tacchaind binary and shared libraries
-COPY --from=builder /build/build/tacchaind /usr/local/bin/tacchaind
-COPY --from=builder /build/libs/ /usr/local/lib/
-
 # Copy dasel for TOML config editing
 COPY --from=dasel /usr/local/bin/dasel /usr/local/bin/
-
-# Update shared library cache
-RUN ldconfig
 
 # Copy entrypoint script
 COPY ./docker-entrypoint.sh /usr/local/bin/
@@ -63,6 +93,28 @@ COPY ./docker-entrypoint.sh /usr/local/bin/
 # Make scripts executable
 RUN chmod -R 755 /usr/local/bin/*
 
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+# Stage 3a: Runtime image using the source-built binary (default)
+FROM runtime-base AS runtime-source
+
+ARG USER=tac
+
+# Copy tacchaind binary and shared libraries
+COPY --from=builder /build/build/tacchaind /usr/local/bin/tacchaind
+COPY --from=builder /build/libs/ /usr/local/lib/
+
+# Update shared library cache
+RUN ldconfig
+
 USER ${USER}
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+# Stage 3b: Runtime image using the fetched, checksum-verified binary
+FROM runtime-base AS runtime-binary
+
+ARG USER=tac
+
+# Copy the checksum-verified tacchaind binary (statically linked, no libs needed)
+COPY --from=fetcher /fetch/bin/tacchaind /usr/local/bin/tacchaind
+
+USER ${USER}

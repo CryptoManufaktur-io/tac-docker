@@ -119,7 +119,27 @@ To upgrade to a new tacchaind version:
 ./tacd restart
 ```
 
-The tacchaind binary is compiled from source during `docker compose build` in a multi-stage Dockerfile.
+By default, the tacchaind binary is compiled from source during `docker compose build`.
+
+### Using a pre-built, checksum-verified binary
+
+Some tacchain releases (e.g. embargoed security-fix builds) are published as
+GitHub releases whose notes explicitly say not to build from the tagged
+source tree - the shipped binary links patches that aren't in the public
+tag, and a self-built binary would silently omit them while reporting the
+same version string. For those releases, set in `.env`:
+
+```bash
+TACCHAIND_BUILD_TARGET=runtime-binary
+TACCHAIND_SHA256_AMD64=<sha256 from the release's checksums.txt>
+TACCHAIND_SHA256_ARM64=<sha256 from the release's checksums.txt>
+```
+
+then `./tacd update`. This downloads `tacchaind-linux-<arch>` from the
+release tagged `TACCHAIND_TAG`, verifies it against the pinned checksum, and
+fails the build if it doesn't match. Check the release notes for the
+version you're deploying to see whether this is required; the default
+`TACCHAIND_BUILD_TARGET=runtime-source` is correct for normal releases.
 
 ## Testing the RPC Endpoint
 
