@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /fetch
 
-RUN set -euo pipefail; \
+RUN set -eu; \
     case "${TARGETARCH}" in \
       amd64) expected_sha256="${DAEMON_SHA256_AMD64}" ;; \
       arm64) expected_sha256="${DAEMON_SHA256_ARM64}" ;; \
