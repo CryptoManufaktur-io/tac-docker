@@ -52,7 +52,11 @@ dasel put -f /cosmos/config/config.toml -v "${__public_ip}:${CL_P2P_PORT}" p2p.e
 dasel put -f /cosmos/config/config.toml -v "tcp://0.0.0.0:${CL_P2P_PORT}" p2p.laddr
 dasel put -f /cosmos/config/config.toml -v "tcp://0.0.0.0:${CL_RPC_PORT}" rpc.laddr
 dasel put -f /cosmos/config/config.toml -v "${MONIKER}" moniker
-dasel put -f /cosmos/config/config.toml -v true prometheus
+# Enable CometBFT Prometheus metrics (served on instrumentation.prometheus_listen_addr,
+# default :26660). The key lives in the [instrumentation] table; this used to write a
+# stray top-level `prometheus = 'true'` that CometBFT ignores, so metrics stayed off.
+dasel delete -f /cosmos/config/config.toml prometheus >/dev/null 2>&1 || true
+dasel put -f /cosmos/config/config.toml -t bool -v true instrumentation.prometheus
 dasel put -f /cosmos/config/config.toml -v "${LOG_LEVEL}" log_level
 
 # Set persistent peers
