@@ -36,6 +36,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - FRESH_INIT_WITH_DATA=${FRESH_INIT_WITH_DATA:-false}
       - PERSISTENT_PEERS=${PERSISTENT_PEERS}
+      - JSON_RPC_API=${JSON_RPC_API:-}
     ports:
       - ${CL_P2P_PORT:-58960}:${CL_P2P_PORT:-58960}/tcp
       - ${CL_RPC_PORT:-26657}:${CL_RPC_PORT:-26657}/tcp

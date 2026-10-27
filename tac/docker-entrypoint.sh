@@ -74,7 +74,7 @@ dasel put -f /cosmos/config/config.toml -v '["Origin","Accept","Content-Type","X
 dasel put -f /cosmos/config/app.toml -v "0.0.0.0:${RPC_PORT}" json-rpc.address
 dasel put -f /cosmos/config/app.toml -v "0.0.0.0:${WS_PORT}" json-rpc.ws-address
 dasel put -f /cosmos/config/app.toml -v true json-rpc.enable
-dasel put -f /cosmos/config/app.toml -v "eth,net,web3,txpool" json-rpc.api
+dasel put -f /cosmos/config/app.toml -v "${JSON_RPC_API:-eth,net,web3,txpool}" json-rpc.api
 dasel delete -f /cosmos/config/app.toml json-rpc.fix-revert-gas-refund-height >/dev/null 2>&1 || true
 
 # Configure EVM chain ID required by Tac v1.6.0
