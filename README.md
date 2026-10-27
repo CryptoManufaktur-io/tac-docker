@@ -141,6 +141,10 @@ fails the build if it doesn't match. Check the release notes for the
 version you're deploying to see whether this is required; the default
 `TACCHAIND_BUILD_TARGET=runtime-source` is correct for normal releases.
 
+## JSON-RPC Namespaces
+
+The public JSON-RPC exposes only the `eth`, `net`, `web3` and `txpool` namespaces; `debug` is not exposed because it allows profiling and heavy tracing calls. To re-enable it without editing any tracked file, set `JSON_RPC_API` in `.env` to the full list including it, for example `JSON_RPC_API=eth,net,web3,txpool,debug`, and run `./tacd up` to re-create the container. A value set there replaces the default list entirely. The entrypoint script is baked into the image, so the image only needs a rebuild (`./tacd update`) when you update this repository, not when you change the variable.
+
 ## Testing the RPC Endpoint
 
 After the node is synced, test the JSON-RPC endpoint:
